@@ -310,14 +310,36 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openSmartBasket() {
-    if (_allProducts.isEmpty) {
+    final source = _filteredProducts.isNotEmpty
+        ? _filteredProducts
+        : _allProducts;
+    if (source.isEmpty) {
       _showSnack(context.tr("لا توجد منتجات تطابق بحثك"));
       return;
+    }
+
+    final uniqueById = <int, Product>{};
+    for (final product in source) {
+      uniqueById.putIfAbsent(product.id, () => product);
+    }
+
+    // Keep payload bounded so basket analysis stays fast on mobile networks.
+    final basketSeed = uniqueById.values.take(40).toList();
+    if (basketSeed.isEmpty) {
+      _showSnack(context.tr("السلة فارغة. يرجى إضافة منتجات أولاً"));
+      return;
+    }
+    if (uniqueById.length > basketSeed.length) {
+      _showSnack(
+        context.tr(
+          "تم استخدام أول 40 منتج لتحليل السلة. استخدم البحث لتقليل النتائج.",
+        ),
+      );
     }
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (c) => SmartBasketScreen(allProducts: _allProducts),
+        builder: (c) => SmartBasketScreen(allProducts: basketSeed),
       ),
     );
   }
